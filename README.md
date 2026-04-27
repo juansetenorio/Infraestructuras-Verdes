@@ -1,175 +1,144 @@
-# 🌱 Sistema de Monitoreo para Techos Verdes
+# 🌱 Sistema IoT para Techos Verdes (ESP32-S3)
 
-Proyecto desarrollado por el grupo **AGE-VITAL** enfocado en el monitoreo y control automático de infraestructuras verdes, específicamente **techos verdes**.
+Sistema de monitoreo y control de riego para infraestructuras verdes basado en **ESP32-S3**, con envío de datos a un servidor (por ejemplo, una Raspberry Pi).
 
 ---
 
 ## 📌 Descripción
 
-Este sistema permite:
+Este proyecto permite:
 
-- Monitorear variables ambientales (temperatura y humedad)
-- Medir condiciones del suelo
-- Controlar el riego automáticamente mediante una electroválvula
-- Enviar datos a un servidor para análisis en tiempo real
-
-Todo el sistema está basado en un **ESP32 TTGO** con conectividad WiFi.
+- Medir variables ambientales y del suelo
+- Controlar una electroválvula de riego
+- Calcular el consumo de agua en tiempo real
+- Enviar datos vía HTTP en formato JSON
 
 ---
 
-## 🎯 Objetivos
+## ⚙️ Hardware utilizado
 
-- Medición de temperatura y humedad ambiental  
-- Medición de humedad y temperatura del suelo  
-- Control automático del flujo de agua  
-- Envío de datos a un servidor IoT  
-
----
-
-## 🧠 Arquitectura del Sistema
-
-El sistema integra:
-
-- Microcontrolador **ESP32 TTGO**
-- Sensores:
-  - SHT31 (temperatura y humedad ambiente)
-  - DS18B20 (temperatura)
-  - Sensor de suelo RS485 (Modbus)
-  - Sensor de flujo (efecto Hall)
-- Pantalla TFT
+- ESP32-S3
+- Sensor de suelo RS485 (Modbus)
+- Sensor DS18B20 (temperatura)
+- 2 sensores SHT31 (I2C)
+- Sensor de flujo (efecto Hall)
 - Electroválvula
-- Comunicación WiFi
 
 ---
 
-## 🔌 Asignación de Pines
+## 🔌 Configuración de Pines (ESP32-S3)
 
-### 📺 Pantalla TFT
-- CS: GPIO 5  
-- RST: GPIO 23  
-- DC: GPIO 16  
-- MOSI: GPIO 19  
-- SCLK: GPIO 18  
-- BL: GPIO 4  
+### I2C
+- SDA: GPIO 8  
+- SCL: GPIO 9  
 
-### 🌱 Sensor RS485 (suelo)
-- DE/RE: GPIO 25  
-- RX: GPIO 33  
-- TX: GPIO 32  
+### RS485 (Modbus)
+- DE: GPIO 16  
+- TX: GPIO 17  
+- RX: GPIO 18  
 
-### 🌡️ Sensor DS18B20
-- DATA: GPIO 17  
+### Sensores
+- DS18B20: GPIO 4  
+- Sensor de flujo: GPIO 5  
 
-### 💧 Sensor SHT31 (I2C)
-- SDA: GPIO 21  
-- SCL: GPIO 22  
-
-### 🚿 Sensor de flujo
-- Señal: GPIO 2  
-
-### 🔄 Electroválvula
-- Control: GPIO 26  
+### Actuador
+- Electroválvula: GPIO 6  
 
 ---
 
-## 🔍 Sensores utilizados
+## 🌡️ Sensores
 
-### SHT31
-- Temperatura del aire  
-- Humedad relativa  
-- Comunicación I2C  
+### RS485 (Modbus)
+- Humedad del suelo  
+- Temperatura del suelo  
 
 ### DS18B20
-- Temperatura  
-- Comunicación OneWire  
+- Temperatura adicional del suelo  
 
-### Sensor de suelo RS485
-- Temperatura del suelo  
-- Humedad del suelo  
-- Comunicación Modbus RTU  
-
-### Sensor de flujo
-- Basado en efecto Hall  
-- Relación: **288 pulsos = 1 litro**  
+### SHT31 (x2)
+- Dirección 0x44 → sensor zona baja  
+- Dirección 0x45 → sensor zona alta  
 
 ---
 
-## 🚰 Control de riego
+## 🚿 Control de riego
 
-- La electroválvula se controla desde el ESP32  
-- Cuando se activa:
-  - Se inicia el conteo de flujo  
-  - Se calcula el volumen de agua utilizado  
-
----
-
-## 🌐 Comunicación
-
-El sistema envía datos en formato **JSON** mediante HTTP a un servidor:
-
-- Orion Context Broker  
-- Protocolo REST  
-
----
-
-## 🔁 Funcionamiento
-
-El sistema opera en ciclos:
-
-- ⏱️ Cada **2 segundos** → Lectura de sensores  
-- 📺 Cada **5 segundos** → Actualización de pantalla  
-- 🌐 Cada **10 segundos** → Envío de datos al servidor  
-
----
-
-## 🖥️ Interacción
-
-Control manual por puerto serial:
+La válvula se controla desde el ESP32:
 
 - `'1'` → Abrir válvula  
 - `'0'` → Cerrar válvula  
 
----
+Cuando la válvula está abierta:
 
-## 📊 Datos enviados
-
-Se transmiten variables como:
-
-- Temperatura del suelo  
-- Humedad del suelo  
-- Temperatura del aire  
-- Humedad del aire  
-- Flujo de agua (sesión y total)  
-- Estado de la válvula  
+- Se cuentan los pulsos del sensor de flujo  
+- Se calcula el volumen de agua consumido  
 
 ---
 
-## 🚀 Tecnologías utilizadas
+## 💧 Medición de flujo
 
-- ESP32 (Arduino framework)  
-- WiFi  
-- HTTPClient  
-- ArduinoJson  
-- ModbusMaster  
-- Adafruit Libraries  
+Sensor basado en efecto Hall:
+288 pulsos = 1 litro
 
----
+Se calculan:
 
-## 📈 Aplicaciones
-
-- Agricultura urbana  
-- Sistemas de riego inteligentes  
-- Proyectos IoT ambientales  
-- Sostenibilidad y ciudades inteligentes  
+- Litros por sesión  
+- Litros totales  
 
 ---
 
-## ✅ Conclusión
+## 🌐 Conectividad
 
-Este sistema permite:
+### WiFi
 
-- Monitoreo en tiempo real  
-- Optimización del uso del agua  
-- Integración con plataformas IoT  
+Configurado directamente en el código:
 
-Convirtiéndose en una solución eficiente y escalable para infraestructuras verdes.
+```cpp
+const char* WIFI_SSID = "Claro_2C06BE";
+const char* WIFI_PASS = "16652524";
+```
+## Servidor 
+
+const char* SERVER_URL = "http://192.168.0.110:5000/data";
+
+## 📡 Envío de datos
+Método: HTTP POST
+Formato: JSON
+Intervalo: cada 5 segundos
+```cpp
+{
+  "device": "esp32-1",
+  "soil_temp_1": 25.4,
+  "soil_humidity_1": 60.2,
+  "soil_temp_2": 24.8,
+  "air_temp_low": 26.1,
+  "air_humidity_low": 55.3,
+  "air_temp_high": 28.0,
+  "air_humidity_high": 50.1,
+  "flow_litros_sesion": 1.25,
+  "flow_litros_total": 10.75,
+  "valve_state": 1,
+  "modbus_ok": true,
+  "ds18b20_ok": true,
+  "sht31_low_ok": true,
+  "sht31_high_ok": true
+}
+```
+## 🔁 Funcionamiento
+Cada 2 segundos:
+Lectura de sensores
+Cálculo de flujo
+Cada 5 segundos:
+Envío de datos al servidor
+
+## 🧠 Características
+Manejo de errores por sensor (*_ok)
+Reintento automático de conexión WiFi
+Lectura de flujo mediante interrupciones
+Comunicación industrial RS485 (Modbus)
+
+## 🖥️ Monitor Serial
+
+Ejemplo:
+[DATA] soilH=60.2 soilT1=25.4 soilT2=24.80 | low: 26.10/55.3 | high: 28.00/50.1 | flowS=1.250 valve=1
+
