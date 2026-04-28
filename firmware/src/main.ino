@@ -6,311 +6,199 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <Adafruit_SHT31.h>
+#include <WebServer.h>   // 👈 NUEVO
 
-// ===================== WIFI / SERVER =====================
-const char* WIFI_SSID = "Claro_2C06BE";
-const char* WIFI_PASS = "16652524";
+// ===================== WIFI =====================
+const char* WIFI_SSID = "MKSPC";
+const char* WIFI_PASS = "Mkspc2308";
+//const char* WIFI_SSID = "Claro_2C06BE";
+//const char* WIFI_PASS = "16652524";
 
-const char* SERVER_URL = "http://192.168.0.110:5000/data";
+// ===================== SERVIDOR =====================
+WebServer server(80);
 
-// ===================== PINOUT ESP32-S3 =====================
+// ===================== PINOUT =====================
 #define I2C_SDA 8
 #define I2C_SCL 9
-
 #define MAX485_DE 16
 #define TX2_PIN   17
 #define RX2_PIN   18
-
 #define ONE_WIRE_BUS 4
 #define FLOW_PIN     5
 #define VALVE_PIN    6
 
-// SHT31 (2 sensores I2C)
+// ===================== SHT31 =====================
 const uint8_t SHT31_ADDR_LOW  = 0x44;
 const uint8_t SHT31_ADDR_HIGH = 0x45;
 
-// Flujo
+// ===================== CONFIG =====================
 const float PULSOS_POR_LITRO = 288.0f;
-
-// Intervalos
 const unsigned long readInterval = 2000;
-const unsigned long sendInterval = 5000;
 
 // ===================== OBJETOS =====================
 HardwareSerial RS485Serial(1);
-
 ModbusMaster node;
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature ds18b20(&oneWire);
-Adafruit_SHT31 sht31_low  = Adafruit_SHT31();
-Adafruit_SHT31 sht31_high = Adafruit_SHT31();
+Adafruit_SHT31 sht31_low;
+Adafruit_SHT31 sht31_high;
 
-// ===================== ESTADO =====================
-float soil_temp_1       = 0.0f;
-float soil_humidity_1   = 0.0f;
-float soil_temp_2       = 0.0f;
-float air_temp_low      = 0.0f;
-float air_humidity_low  = 0.0f;
-float air_temp_high     = 0.0f;
-float air_humidity_high = 0.0f;
+// ===================== VARIABLES =====================
+float soil_temp_1 = 0, soil_humidity_1 = 0, soil_temp_2 = 0;
+float air_temp_low = 0, air_humidity_low = 0;
+float air_temp_high = 0, air_humidity_high = 0;
 
-float flow_litros_sesion = 0.0f;
-float flow_litros_total  = 0.0f;
-bool  valve_state        = false;
-
-bool modbus_ok      = false;
-bool ds18b20_ok     = false;
-bool sht31_low_ok   = false;
-bool sht31_high_ok  = false;
+bool sht31_low_ok = false;
+bool sht31_high_ok = false;
 
 unsigned long lastReadTime = 0;
-unsigned long lastSendTime = 0;
 
-// ===================== FLUJO (INTERRUPT) =====================
-volatile uint32_t pulsosFlujo = 0;
-portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+// ===================== HTML =====================
+String getHTML() {
+  String html = "<!DOCTYPE html><html><head>";
+  html += "<meta http-equiv='refresh' content='2'>";
+  html += "<style>body{font-family:Arial; text-align:center;} .box{margin:10px;padding:10px;border:1px solid #ccc;}</style>";
+  html += "</head><body>";
 
-void IRAM_ATTR contarPulsos() {
-  portENTER_CRITICAL_ISR(&mux);
-  pulsosFlujo++;
-  portEXIT_CRITICAL_ISR(&mux);
+  html += "<h2>MONITOREO ESP32</h2>";
+
+  html += "<div class='box'><h3>SHT31 BAJO</h3>";
+  html += "Temp: " + String(air_temp_low) + " C<br>";
+  html += "Hum: " + String(air_humidity_low) + " %</div>";
+
+  html += "<div class='box'><h3>SHT31 ALTO</h3>";
+  html += "Temp: " + String(air_temp_high) + " C<br>";
+  html += "Hum: " + String(air_humidity_high) + " %</div>";
+
+  html += "<div class='box'><h3>SUELO</h3>";
+  html += "Temp1: " + String(soil_temp_1) + "<br>";
+  html += "Hum1: " + String(soil_humidity_1) + "<br>";
+  html += "Temp2: " + String(soil_temp_2) + "</div>";
+
+  html += "</body></html>";
+  return html;
 }
 
-// ===================== RS485 =====================
-void preTransmission()  { digitalWrite(MAX485_DE, HIGH); delay(2); }
-void postTransmission() { delay(2); digitalWrite(MAX485_DE, LOW);  }
+// ===================== API JSON =====================
+void handleData() {
+  StaticJsonDocument<512> doc;
 
-// ===================== VÁLVULA =====================
-void setValvula(bool abrir) {
-  valve_state = abrir;
-  digitalWrite(VALVE_PIN, abrir ? HIGH : LOW);
+  doc["air_temp_low"] = air_temp_low;
+  doc["air_temp_high"] = air_temp_high;
+  doc["air_humidity_low"] = air_humidity_low;
+  doc["air_humidity_high"] = air_humidity_high;
 
-  if (abrir) {
-    portENTER_CRITICAL(&mux);
-    pulsosFlujo = 0;
-    portEXIT_CRITICAL(&mux);
-    flow_litros_sesion = 0.0f;
-    Serial.println("[VALVULA] ABIERTA");
-  } else {
-    Serial.printf("[VALVULA] CERRADA - Sesion: %.4f L\n", flow_litros_sesion);
-  }
-}
-
-// ===================== I2C SCAN =====================
-void scanI2C() {
-  Serial.println("\n[I2C] Escaneando...");
-  for (uint8_t addr = 1; addr < 127; addr++) {
-    Wire.beginTransmission(addr);
-    if (Wire.endTransmission() == 0) {
-      Serial.printf("[I2C] Dispositivo en 0x%02X\n", addr);
-    }
-  }
-  Serial.println("[I2C] Fin scan\n");
+  String json;
+  serializeJson(doc, json);
+  server.send(200, "application/json", json);
 }
 
 // ===================== SENSORES =====================
-void leerModbus() {
-  uint8_t res = node.readHoldingRegisters(2, 2);
-  if (res == node.ku8MBSuccess) {
-    soil_humidity_1 = node.getResponseBuffer(0) / 10.0f;
-    soil_temp_1     = node.getResponseBuffer(1) / 10.0f;
-    modbus_ok = true;
-  } else {
-    modbus_ok = false;
-    Serial.printf("[MODBUS] Error: 0x%02X\n", res);
-  }
-}
-
-void leerDS18B20() {
-  ds18b20.requestTemperatures();
-  float t = ds18b20.getTempCByIndex(0);
-  if (t == DEVICE_DISCONNECTED_C) {
-    soil_temp_2 = 0.0f;
-    ds18b20_ok = false;
-  } else {
-    soil_temp_2 = t;
-    ds18b20_ok = true;
-  }
-}
-
 void leerSHT31() {
 
-  // 🔁 RECONEXIÓN AUTOMÁTICA
-  if (!sht31_low_ok) {
-    sht31_low_ok = sht31_low.begin(SHT31_ADDR_LOW);
-    if (sht31_low_ok) Serial.println("[SHT31 LOW] Reconectado");
-  }
-  if (!sht31_high_ok) {
-    sht31_high_ok = sht31_high.begin(SHT31_ADDR_HIGH);
-    if (sht31_high_ok) Serial.println("[SHT31 HIGH] Reconectado");
-  }
+  if (!sht31_low_ok) sht31_low_ok = sht31_low.begin(SHT31_ADDR_LOW);
+  if (!sht31_high_ok) sht31_high_ok = sht31_high.begin(SHT31_ADDR_HIGH);
 
   float t1 = sht31_low.readTemperature();
   float h1 = sht31_low.readHumidity();
 
-  if (!isnan(t1) && !isnan(h1) && t1 > -40 && t1 < 125) {
+  if (!isnan(t1) && !isnan(h1)) {
     air_temp_low = t1;
     air_humidity_low = h1;
-    sht31_low_ok = true;
-    Serial.printf("[SHT31 LOW] OK -> %.2f C | %.1f %%\n", t1, h1);
   } else {
-    air_temp_low = 0;
-    air_humidity_low = 0;
     sht31_low_ok = false;
-    Serial.println("[SHT31 LOW] ERROR");
   }
 
   float t2 = sht31_high.readTemperature();
   float h2 = sht31_high.readHumidity();
 
-  if (!isnan(t2) && !isnan(h2) && t2 > -40 && t2 < 125) {
+  if (!isnan(t2) && !isnan(h2)) {
     air_temp_high = t2;
     air_humidity_high = h2;
-    sht31_high_ok = true;
-    Serial.printf("[SHT31 HIGH] OK -> %.2f C | %.1f %%\n", t2, h2);
   } else {
-    air_temp_high = 0;
-    air_humidity_high = 0;
     sht31_high_ok = false;
-    Serial.println("[SHT31 HIGH] ERROR");
   }
 }
 
-void calcularFlujo() {
-  if (!valve_state) return;
+void leerDS18B20() {
+  ds18b20.requestTemperatures();
+  soil_temp_2 = ds18b20.getTempCByIndex(0);
+}
 
-  uint32_t pulsos = 0;
-  portENTER_CRITICAL(&mux);
-  pulsos = pulsosFlujo;
-  pulsosFlujo = 0;
-  portEXIT_CRITICAL(&mux);
-
-  float litros = pulsos / PULSOS_POR_LITRO;
-  flow_litros_sesion += litros;
-  flow_litros_total  += litros;
+void leerModbus() {
+  uint8_t res = node.readHoldingRegisters(2, 2);
+  if (res == node.ku8MBSuccess) {
+    soil_humidity_1 = node.getResponseBuffer(0) / 10.0f;
+    soil_temp_1     = node.getResponseBuffer(1) / 10.0f;
+  }
 }
 
 // ===================== WIFI =====================
 void connectWiFi() {
-  WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
+  Serial.print("Conectando WiFi");
 
-  Serial.printf("[WIFI] Conectando a %s", WIFI_SSID);
-  uint8_t intentos = 0;
-  while (WiFi.status() != WL_CONNECTED && intentos < 30) {
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
-    intentos++;
   }
-  Serial.println();
 
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.print("[WIFI] OK IP: ");
-    Serial.println(WiFi.localIP());
-  } else {
-    Serial.println("[WIFI] No conectado");
-  }
-}
-
-// ===================== POST JSON =====================
-bool postJSON(const String& json) {
-  if (WiFi.status() != WL_CONNECTED) return false;
-
-  HTTPClient http;
-  http.begin(SERVER_URL);
-  http.addHeader("Content-Type", "application/json");
-
-  int code = http.POST((uint8_t*)json.c_str(), json.length());
-  String resp = http.getString();
-  http.end();
-
-  Serial.printf("[POST] HTTP %d | resp: %s\n", code, resp.c_str());
-  return (code >= 200 && code < 300);
+  Serial.println("\nConectado!");
+  Serial.println(WiFi.localIP());
 }
 
 // ===================== SETUP =====================
 void setup() {
   Serial.begin(115200);
-  delay(400);
-
-  pinMode(VALVE_PIN, OUTPUT);
-  digitalWrite(VALVE_PIN, LOW);
-
-  pinMode(FLOW_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(FLOW_PIN), contarPulsos, RISING);
-
-  pinMode(MAX485_DE, OUTPUT);
-  digitalWrite(MAX485_DE, LOW);
-
-  // 🔧 I2C MÁS ROBUSTO
-  pinMode(I2C_SDA, INPUT_PULLUP);
-  pinMode(I2C_SCL, INPUT_PULLUP);
-  delay(10);
 
   Wire.begin(I2C_SDA, I2C_SCL);
-  Wire.setClock(100000);
   Wire.setTimeout(50);
-
-  scanI2C(); // 👈 VER DISPOSITIVOS
-
-  // RS485
-  RS485Serial.begin(9600, SERIAL_8N1, RX2_PIN, TX2_PIN);
-  node.begin(1, RS485Serial);
-  node.preTransmission(preTransmission);
-  node.postTransmission(postTransmission);
 
   ds18b20.begin();
 
-  // SHT31
-  sht31_low_ok  = sht31_low.begin(SHT31_ADDR_LOW);
-  sht31_high_ok = sht31_high.begin(SHT31_ADDR_HIGH);
-
-  Serial.printf("[SHT31] 0x44: %s\n", sht31_low_ok  ? "OK" : "NO");
-  Serial.printf("[SHT31] 0x45: %s\n", sht31_high_ok ? "OK" : "NO");
+  sht31_low.begin(SHT31_ADDR_LOW);
+  sht31_high.begin(SHT31_ADDR_HIGH);
 
   connectWiFi();
 
-  Serial.println("Sistema listo.");
+  // 🌐 RUTAS WEB
+  server.on("/", []() {
+    server.send(200, "text/html", getHTML());
+  });
+
+  server.on("/data", handleData);
+
+  server.begin();
+
+  Serial.println("Servidor web iniciado");
 }
 
 // ===================== LOOP =====================
 void loop() {
 
-  static unsigned long lastWifiRetry = 0;
-  if (WiFi.status() != WL_CONNECTED && millis() - lastWifiRetry > 5000) {
-    WiFi.reconnect();
-    lastWifiRetry = millis();
-  }
-
-  if (Serial.available()) {
-    char cmd = Serial.read();
-    if (cmd == '1') setValvula(true);
-    else if (cmd == '0') setValvula(false);
-  }
+  server.handleClient();  // 👈 IMPORTANTE
 
   unsigned long now = millis();
 
   if (now - lastReadTime >= readInterval) {
     leerModbus();
     leerDS18B20();
-    leerSHT31();   // 👈 YA CON DEBUG
-
-    calcularFlujo();
-
+    leerSHT31();
     lastReadTime = now;
   }
 
-  if (now - lastSendTime >= sendInterval) {
-    StaticJsonDocument<1024> doc;
+  /*
+  // ===================== POST A RASPBERRY (DESACTIVADO) =====================
+  // Puedes volverlo a activar cuando la uses
 
-    doc["device"] = "esp32-1";
-    doc["air_temp_low"] = air_temp_low;
-    doc["air_temp_high"] = air_temp_high;
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin("http://192.168.0.110:5000/data");
+    http.addHeader("Content-Type", "application/json");
 
-    String payload;
-    serializeJson(doc, payload);
-
-    postJSON(payload);
-    lastSendTime = now;
+    String json = "{}";
+    http.POST(json);
+    http.end();
   }
+  */
 }
