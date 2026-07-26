@@ -1,0 +1,70 @@
+{
+  "valveOpen": {
+    "type": "Boolean",
+    "value": true
+  },
+  "flowSensorEnabled": {
+    "type": "Boolean",
+    "value": true
+  },
+  "flowRate": {
+    "type": "Number",
+    "value": 12.417
+  },
+  "flowTotal": {
+    "type": "Number",
+    "value": 45.6215
+  },
+  "flowFrequency": {
+    "type": "Number",
+    "value": 59.6
+  },
+  "flowPulses": {
+    "type": "Number",
+    "value": 60
+  },
+  "ambientTemperatureOk": {
+    "type": "Boolean",
+    "value": true
+  },
+  "ambientTemperature": {
+    "type": "Number",
+    "value": 27.31
+  },
+  "sht31Bus0Ok": {
+    "type": "Boolean",
+    "value": true
+  },
+  "sht31Bus0Temperature": {
+    "type": "Number",
+    "value": 27.18
+  },
+  "sht31Bus0Humidity": {
+    "type": "Number",
+    "value": 68.42
+  },
+  "sht31Bus1Ok": {
+    "type": "Boolean",
+    "value": true
+  },
+  "sht31Bus1Temperature": {
+    "type": "Number",
+    "value": 28.02
+  },
+  "sht31Bus1Humidity": {
+    "type": "Number",
+    "value": 65.77
+  },
+  "soilSensorOk": {
+    "type": "Boolean",
+    "value": true
+  },
+  "soilTemperature": {
+    "type": "Number",
+    "value": 25.6
+  },
+  "soilHumidity": {
+    "type": "Number",
+    "value": 47.3
+  }
+}

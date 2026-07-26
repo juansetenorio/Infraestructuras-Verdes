@@ -1,0 +1,132 @@
+[
+  {
+    "file": "AppConfig.cpp",
+    "bytes": 4935,
+    "sha256": "ae0a4c9a091d1bdce3edbef4c92d66fc188b9742b4ce46ede1a057e893ded4db"
+  },
+  {
+    "file": "AppConfig.h",
+    "bytes": 1288,
+    "sha256": "40b6601ffc71216e6e6be9c5adc76f0ee419787424e5d2b36900b590d84d4657"
+  },
+  {
+    "file": "Estados.cpp",
+    "bytes": 4542,
+    "sha256": "d5c420a890a5c3264a8d71f5fb74a0f58dd3a4cda0490f7e4319008e0bde334c"
+  },
+  {
+    "file": "Estados.h",
+    "bytes": 814,
+    "sha256": "f4629519e257232bee18c8f925e07fad15b64eed9d654d211a4a4f67c7b12619"
+  },
+  {
+    "file": "FIWARE_PAYLOAD_EXAMPLE.json",
+    "bytes": 1156,
+    "sha256": "c1395beac24988aa5a4dca4e90ba34586f7660194ead1dd72e955fc793c1f659"
+  },
+  {
+    "file": "LocalWebServer.cpp",
+    "bytes": 28834,
+    "sha256": "095857feb2a1db4ea18cf45fa810c95343951ad29481d4aa7b4212805fca5e40"
+  },
+  {
+    "file": "LocalWebServer.h",
+    "bytes": 760,
+    "sha256": "f9f6efe22d434e623335a9067fe65f6cb17618ad1679e16ddbb5f1e9818aedc3"
+  },
+  {
+    "file": "PayloadBuilder.cpp",
+    "bytes": 2093,
+    "sha256": "60b80cbd3bc19f3e0ec5d5655c0d5ce7e5e33dc15bb828e8c2095f061518296c"
+  },
+  {
+    "file": "PayloadBuilder.h",
+    "bytes": 176,
+    "sha256": "997cf76fd20c18b813e3f073aba9105f0c3f465c4cb2b3f5f4175aa3ac72c917"
+  },
+  {
+    "file": "README.md",
+    "bytes": 7375,
+    "sha256": "7a862c594388fcea0c5508ba11d9dbd7c43cac55b15e3fdcc35b429917e4b276"
+  },
+  {
+    "file": "REVIEW_ORIGINAL_CODE.md",
+    "bytes": 2635,
+    "sha256": "4f3c8d92b75696f015d71c807ef894b0c279b921b6edf25a750942f52a7808e3"
+  },
+  {
+    "file": "SensorManager.cpp",
+    "bytes": 10839,
+    "sha256": "8bf7a4dd87bcdbaa63c284657a535bf7474523bb6087578acf88f1343445c008"
+  },
+  {
+    "file": "SensorManager.h",
+    "bytes": 2175,
+    "sha256": "2a04bb183a53c18533e76f178b39c70540740b78fab0ffa92cc9f5ef30d03534"
+  },
+  {
+    "file": "State.h",
+    "bytes": 369,
+    "sha256": "b645c86ad4558d7c5d18a1f4dc495ff7146c1535c1f0f1de1c03e88bd3456ce4"
+  },
+  {
+    "file": "StateMachine.cpp",
+    "bytes": 1439,
+    "sha256": "0885963cc821f80b232164892b45d8f541800ed8308e203b625632a10877a68d"
+  },
+  {
+    "file": "StateMachine.h",
+    "bytes": 749,
+    "sha256": "1e9287a72a757f80536cd7bde210d21320d3562962fefd637cb2d409a5068187"
+  },
+  {
+    "file": "TARS_Riego.ino",
+    "bytes": 1297,
+    "sha256": "4a714bdcaa102e360a1d18a2eeee3b7bafa96c5032ce51aa2dc928d4dd39996e"
+  },
+  {
+    "file": "TokenManager.cpp",
+    "bytes": 2726,
+    "sha256": "4a1a9a19ea05d02ddcf5f79d04b024eb00f1f43e3f28c0107f66f9b14ea9866b"
+  },
+  {
+    "file": "TokenManager.h",
+    "bytes": 385,
+    "sha256": "b136fe2d4c5a370b870b43392507aa98564f817ba4dbf2062f916adc51816efa"
+  },
+  {
+    "file": "VALIDATION.md",
+    "bytes": 1024,
+    "sha256": "80a3589db682d039a7127eab9d7882e1dbb72954d99df58ebad87a67b9faf523"
+  },
+  {
+    "file": "ValveManager.cpp",
+    "bytes": 1153,
+    "sha256": "c824e948264001017950bc3110ee3617460f9684872059ab14bcb7c8019ca49d"
+  },
+  {
+    "file": "ValveManager.h",
+    "bytes": 611,
+    "sha256": "d11096c742d12e3b7c81291ff623273deef1b6c963e55151997dad7b232a87b3"
+  },
+  {
+    "file": "WIRING.md",
+    "bytes": 1677,
+    "sha256": "2eab9222560d4a06cfd321e462ca0f3ef38b7ec93cc02d1790d30b18a5d9e769"
+  },
+  {
+    "file": "WiFiManager.cpp",
+    "bytes": 2757,
+    "sha256": "1a21d9913389abe8182495651d6fbe5d7665f79be061116147702ac5e2291bda"
+  },
+  {
+    "file": "WiFiManager.h",
+    "bytes": 912,
+    "sha256": "4afb0d807159aa5560854cf0f1450c3e74e68700293738587cce8e4baf1540df"
+  },
+  {
+    "file": "libraries.txt",
+    "bytes": 42,
+    "sha256": "22d370a9ff95cd6718a5bce0c90e8b050f7bd37e0e3af0bedea18b961c220e64"
+  }
+]

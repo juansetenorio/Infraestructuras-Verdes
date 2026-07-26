@@ -1,0 +1,3 @@
+ArduinoJson 7.x
+OneWire
+DallasTemperature
