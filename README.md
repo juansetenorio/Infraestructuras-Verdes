@@ -1,6 +1,6 @@
-# 🌱 Sistema IoT para Techos Verdes (ESP32-S3)
+# 🌱 Sistema IoT para Infraestructuras Verdes (ESP32-S3)
 
-Sistema de monitoreo y control de riego para infraestructuras verdes basado en **ESP32-S3**, con envío de datos a un servidor (por ejemplo, una Raspberry Pi).
+Sistema de monitoreo para celdas de evaluación de infraestructuras verdes basado en **ESP32-S3**. El sistema recopila datos ambientales, temperatura y humedad del sustrato, y la percolación de agua, enviando los datos empaquetados en JSON a un servidor local o en la nube.
 
 ---
 
@@ -8,82 +8,55 @@ Sistema de monitoreo y control de riego para infraestructuras verdes basado en *
 
 Este proyecto permite:
 
-- Medir variables ambientales y del suelo
-- Controlar una electroválvula de riego
-- Calcular el consumo de agua en tiempo real
-- Enviar datos vía HTTP en formato JSON
+- Monitorear el microclima a diferentes alturas (15 cm y 60 cm) sobre el sustrato.
+- Medir la temperatura y humedad interna del suelo mediante sensores industriales y sondas sumergibles.
+- Cuantificar el volumen de agua filtrada (percolación) utilizando un pluviómetro de balancín.
+- Enviar todos los datos vía HTTP en formato JSON.
 
 ---
 
 ## ⚙️ Hardware utilizado
 
-- ESP32-S3
-- Sensor de suelo RS485 (Modbus)
-- Sensor DS18B20 (temperatura)
-- 2 sensores SHT31 (I2C)
-- Sensor de flujo (efecto Hall)
-- Electroválvula
+- ESP32-S3 (Placa de control en caja de paso)
+- 1x Sensor de suelo JXBS-3001-TR (Temperatura y Humedad vía RS485/Modbus)
+- 1x Sensor DS18B20 (Temperatura profunda del suelo vía OneWire)
+- 2x Sensores SHT31 (Temperatura y Humedad del aire vía I2C)
+- 1x Pluviómetro de balancín (Medición de flujo por interrupción de pulsos)
 
 ---
 
 ## 🔌 Configuración de Pines (ESP32-S3)
 
-### I2C
-- SDA: GPIO 8  
-- SCL: GPIO 9  
+### I2C (Sensores SHT31)
+- **Bus 0 (15 cm):** SDA: GPIO 4 | SCL: GPIO 5  
+- **Bus 1 (60 cm):** SDA: GPIO 8 | SCL: GPIO 9  
 
-### RS485 (Modbus)
-- DE: GPIO 16  
-- TX: GPIO 17  
-- RX: GPIO 18  
+### RS485 (Modbus - JXBS-3001)
+- **DE/RE (Control):** GPIO 16  
+- **TX (DI):** GPIO 17  
+- **RX (RO):** GPIO 18  
 
-### Sensores
-- DS18B20: GPIO 4  
-- Sensor de flujo: GPIO 5  
-
-### Actuador
-- Electroválvula: GPIO 6  
+### Sensores Adicionales
+- **DS18B20 (OneWire):** GPIO 10  
+- **Pluviómetro (Pulsos):** GPIO 11  
 
 ---
 
-## 🌡️ Sensores
+## 🌡️ Direccionamiento de Sensores
 
 ### RS485 (Modbus)
-- Humedad del suelo  
-- Temperatura del suelo  
-
-### DS18B20
-- Temperatura adicional del suelo  
+- Dirección del esclavo: `0x01` a `9600 bps`.
 
 ### SHT31 (x2)
-- Dirección 0x44 → sensor zona baja  
-- Dirección 0x45 → sensor zona alta  
+- Ambos sensores utilizan la dirección `0x44`. No hay conflicto porque están separados físicamente en el **Bus 0** y el **Bus 1** del I2C de la ESP32-S3.
 
 ---
 
-## 🚿 Control de riego
+## 💧 Medición de Percolación (Pluviómetro)
 
-La válvula se controla desde el ESP32:
-
-- `'1'` → Abrir válvula  
-- `'0'` → Cerrar válvula  
-
-Cuando la válvula está abierta:
-
-- Se cuentan los pulsos del sensor de flujo  
-- Se calcula el volumen de agua consumido  
-
----
-
-## 💧 Medición de flujo
-
-Sensor basado en efecto Hall:
-288 pulsos = 1 litro
-
-Se calculan:
-
-- Litros por sesión  
-- Litros totales  
+El sistema lee los pulsos generados por el balancín del pluviómetro ubicado en el drenaje de la celda.
+- Se procesan los pulsos mediante interrupciones en el GPIO 11.
+- Se calcula el volumen de agua filtrada (litros o milímetros) dependiendo del factor de conversión mecánico del balancín.
 
 ---
 
@@ -94,51 +67,44 @@ Se calculan:
 Configurado directamente en el código:
 
 ```cpp
-const char* WIFI_SSID = "Claro_2C06BE";
-const char* WIFI_PASS = "16652524";
+const char* WIFI_SSID = "Tu_Red_WiFi";
+const char* WIFI_PASS = "Tu_Contraseña";
 ```
-## Servidor 
 
-const char* SERVER_URL = "http://192.168.0.110:5000/data";
+### Servidor 
+
+```cpp
+const char* SERVER_URL = "[http://192.168.0.110:5000/data](http://192.168.0.110:5000/data)";
+```
 
 ## 📡 Envío de datos
-Método: HTTP POST
-Formato: JSON
-Intervalo: cada 5 segundos
-```cpp
+
+- **Método:** HTTP POST
+- **Formato:** JSON
+- **Estructura del Payload:**
+
+```json
 {
-  "device": "esp32-1",
-  "soil_temp_1": 25.4,
-  "soil_humidity_1": 60.2,
-  "soil_temp_2": 24.8,
-  "air_temp_low": 26.1,
-  "air_humidity_low": 55.3,
-  "air_temp_high": 28.0,
-  "air_humidity_high": 50.1,
-  "flow_litros_sesion": 1.25,
-  "flow_litros_total": 10.75,
-  "valve_state": 1,
-  "modbus_ok": true,
-  "ds18b20_ok": true,
-  "sht31_low_ok": true,
-  "sht31_high_ok": true
+  "temperature": 24.5,
+  "temp_60": 24.8,
+  "hum_60": 55.3,
+  "temp_15": 24.2,
+  "hum_15": 52.1,
+  "temp_soil": 18.7,
+  "hum_soil": 40.5
 }
 ```
+*(Nota: Las variables de flujo y métricas internas se gestionan en memoria y pueden habilitarse en el constructor JSON si el servidor lo requiere).*
+
+---
+
 ## 🔁 Funcionamiento
-Cada 2 segundos:
-Lectura de sensores
-Cálculo de flujo
-Cada 5 segundos:
-Envío de datos al servidor
 
-## 🧠 Características
-Manejo de errores por sensor (*_ok)
-Reintento automático de conexión WiFi
-Lectura de flujo mediante interrupciones
-Comunicación industrial RS485 (Modbus)
+1. **Lectura cíclica:** La ESP32-S3 interroga los sensores I2C, OneWire y RS485.
+2. **Conteo en segundo plano:** Las interrupciones cuentan los vuelcos del pluviómetro en tiempo real.
+3. **Empaquetado y Envío:** La librería `ArduinoJson` construye el payload y se envía al servidor mediante una petición HTTP POST.
 
-## 🖥️ Monitor Serial
-
-Ejemplo:
-[DATA] soilH=60.2 soilT1=25.4 soilT2=24.80 | low: 26.10/55.3 | high: 28.00/50.1 | flowS=1.250 valve=1
-
+## 🧠 Características Destacadas
+- Redundancia I2C mediante la instanciación de dos buses independientes.
+- Manejo de errores de lectura: Si un sensor se desconecta, su bandera interna (`dsOk`, `sht0Ok`, etc.) evita enviar basura al JSON.
+- Reintento automático de conexión WiFi.
