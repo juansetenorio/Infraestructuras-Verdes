@@ -1,4 +1,4 @@
-# TARS Riego — firmware ESP32-S3
+#  Inf Verde — firmware ESP32-S3
 
 Firmware modular para el conjunto completo de sensores:
 
@@ -6,7 +6,7 @@ Firmware modular para el conjunto completo de sensores:
 - 1 × DS18B20.
 - 1 × sensor de suelo JXBS-3001-TR por RS485/Modbus RTU.
 - 1 × caudalímetro FS400A.
-- 1 × electroválvula controlada mediante relé o MOSFET.
+- 1 × electroválvula controlada mediante puente H.
 - Envío periódico de atributos NGSI v2 mediante `PATCH`.
 - Autenticación opcional con Keyrock.
 - Dashboard web local.
@@ -32,15 +32,11 @@ El total acumulado de litros no se borra al cerrar la válvula. Solo se borra us
 
 ## Advertencia eléctrica
 
-No conecte una electroválvula directamente al GPIO 12 del ESP32.
+No conecte una electroválvula directamente a los pines del ESP32.
 
-Debe utilizarse uno de estos circuitos:
+Para el control de la electroválvula en este proyecto, se utiliza un circuito de **Puente H** conectado a los pines 13 (INT3) y 12 (INT4). Esto permite manejar la potencia necesaria para la bobina y controlar la polaridad de la misma.
 
-- módulo de relé compatible con lógica de 3.3 V;
-- MOSFET de nivel lógico;
-- transistor de potencia con etapa de manejo.
-
-La bobina requiere diodo flyback, alimentación adecuada y tierra común con el ESP32 cuando corresponda. Ver `WIRING.md`.
+Asegúrese de que el puente H tenga la alimentación de potencia adecuada para la válvula y comparta la tierra (GND) común con el ESP32. Ver `WIRING.md`.
 
 ## Estructura
 
@@ -72,16 +68,13 @@ TARS_Riego/
 | SHT31 bus 1 SCL | 9 |
 | DS18B20 OneWire | 10 |
 | Caudalímetro FS400A | 11 |
-| Electroválvula / relé | 12 |
-| RS485 RO → RX | 39 |
-| RS485 DI ← TX | 40 |
-| RS485 DE/RE | 41 |
+| Puente H (INT4) | 12 |
+| Puente H (INT3) | 13 |
+| RS485 RO → RX | 18 |
+| RS485 DI ← TX | 17 |
+| RS485 DE/RE | 16 |
 
-El control de la válvula está configurado como activo en `HIGH`. Si el módulo de relé es activo en `LOW`, cambie en `ValveManager.h`:
-
-```cpp
-#define VALVE_ACTIVE_LEVEL LOW
-```
+El control de la válvula está configurado para operar a través del puente H. Para abrir o cerrar la válvula, deberá ajustar la lógica en `ValveManager.h` y `ValveManager.cpp` para combinar los estados lógicos de ambos pines (por ejemplo, INT3 en `HIGH` e INT4 en `LOW` para abrir, e invertir o apagar ambos para cerrar).
 
 ## Librerías
 
@@ -117,7 +110,7 @@ Las siguientes vienen con el core ESP32:
 Conectado al router, use el nombre único mostrado en el monitor serial, por ejemplo:
 
 ```text
-http://tars-riego-a1b2c3.local
+[http://tars-riego-a1b2c3.local](http://tars-riego-a1b2c3.local)
 ```
 
 También puede usar la IP mostrada en el monitor serial.
@@ -127,7 +120,7 @@ Cuando no logra conectarse al router, publica un AP derivado del nombre:
 ```text
 SSID de ejemplo: TARS-RIEGO-A1B2C3-SETUP
 Clave: 12345678
-IP: http://192.168.4.1
+IP: [http://192.168.4.1](http://192.168.4.1)
 ```
 
 ## Rutas web
@@ -159,7 +152,7 @@ Authorization: Bearer <token>
 La entidad de `serverUrl` debe existir previamente. El valor inicial es:
 
 ```text
-http://10.38.35.216:1026/v2/entities/tars-riego-01/attrs
+[http://10.38.35.216:1026/v2/entities/tars-riego-01/attrs](http://10.38.35.216:1026/v2/entities/tars-riego-01/attrs)
 ```
 
 Puede cambiarse desde `/config`.
